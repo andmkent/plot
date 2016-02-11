@@ -535,10 +535,6 @@
       (define suffixes (if (eq? size 'bit) bit-suffixes byte-suffixes))
       (define base (if (eq? kind 'SI) 10 2))
       (define pow (if (eq? kind 'SI) 3 10))
-      
-      (define-values (base pow) (case kind
-                                  [(SI)  (values 10 3)]
-                                  [else  (values 2 10)]))
       (define x-largest (max* (abs x-min) (abs x-max)))
       (define b
         (if (positive? x-largest) (floor-log/base (expt base pow) x-largest) 0))

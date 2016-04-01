@@ -1,6 +1,6 @@
 #lang typed/racket/base
 
-(require racket/list
+(require racket/list typed/safe/ops
          (only-in racket/unsafe/ops unsafe-vector-ref))
 
 (provide exact-vector2d
@@ -11,8 +11,8 @@
 (define (exact-vector2d v)
   (define n (vector-length v))
   (cond [(= n 2)
-         (define v1 (unsafe-vector-ref v 0))
-         (define v2 (unsafe-vector-ref v 1))
+         (define v1 (safe-vector-ref v 0))
+         (define v2 (safe-vector-ref v 1))
          (cond [(and (rational? v1) (rational? v2))
                 (vector (inexact->exact v1) (inexact->exact v2))]
                [else  #f])]

@@ -2,7 +2,7 @@
 
 ;; Functions that sample from functions, and functions that create memoized samplers.
 
-(require racket/match racket/flonum racket/math racket/list racket/vector
+(require racket/match racket/flonum racket/math racket/list racket/vector typed/safe/ops
          "type-doc.rkt"
          "math.rkt"
          "axis-transform.rkt")
@@ -18,7 +18,8 @@
                               #:when (<= min-val x max-val))
     x))
 
-(:: linear-seq (->* [Real Real Natural] [#:start? Boolean #:end? Boolean] (Listof Real)))
+(:: linear-seq (->* [Real Real Natural] [#:start? Boolean #:end? Boolean]
+                    (Listof Real)))
 (define (linear-seq start end num #:start? [start? #t] #:end? [end? #t])
   (cond
     [(zero? num)  empty]

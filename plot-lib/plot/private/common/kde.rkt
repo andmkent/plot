@@ -1,6 +1,6 @@
 #lang typed/racket/base
 
-(require racket/list racket/promise
+(require racket/list racket/promise typed/safe/ops
          math/base
          math/flonum
          (only-in math/statistics sort-samples)
@@ -11,21 +11,28 @@
 
 (provide kde)
 
-(: make-kde/windowed (-> (Vectorof Flonum) Flonum (Vectorof Flonum) Flonum (-> Flonum Flonum)))
+(: make-kde/windowed (-> (Vectorof Flonum)
+                         Flonum
+                         (Vectorof Flonum)
+                         Flonum
+                         (-> Flonum Flonum)))
 ;; Can assume that xs is sorted
 ;; Make a naive KDE, but uses windows to keep from adding Gaussians more than max-dist away
 (define ((make-kde/windowed xs h ws max-dist) y)
-  (define i (vector-find-index (λ ([x : Flonum]) (<= (abs (- x y)) max-dist)) xs))
+  (define i (vector-find-index (λ ([x : Flonum]) (<= (abs (- x y)) max-dist)) xs 0))
   (cond [(not i)  0.0]
         [else
-         (define j
-           (let ([j  (vector-find-index (λ ([x : Flonum]) (> (abs (- x y)) max-dist)) xs i)])
+         (define j : (Refine [j : Natural] (<= j (len xs)))
+           (let ([j (vector-find-index (λ ([x : Flonum]) (> (abs (- x y)) max-dist)) xs i)])
              (if j j (vector-length xs))))
-         (for/fold ([p : Flonum  0.0]) ([k  (in-range i j)])
-           (define x (vector-ref xs k))
-           (define w (vector-ref ws k))
-           (define z (/ (- x y) h))
-           (+ p (* w (flexp (- (sqr z))))))]))
+         (let loop ([p : Flonum  0.0] [k : Natural i])
+           (cond
+             [(< k j)
+              (define x (safe-vector-ref xs k))
+              (define w (vector-ref ws k))
+              (define z (/ (- x y) h))
+              (loop (+ p (* w (flexp (- (sqr z))))) (+ k 1))]
+             [else p]))]))
 
 ;; Below this amount, we're fine with a kernel not contributing to the sum
 (define eps 1e-06)

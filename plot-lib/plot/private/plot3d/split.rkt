@@ -1,6 +1,6 @@
 #lang typed/racket/base
 
-(require racket/list
+(require racket/list typed/safe/ops
          racket/flonum)
 
 (provide point3d-plane-dist
@@ -195,47 +195,54 @@
                                 (Listof FlVector) (Listof Boolean))))
 (define (polygon3d-divide vs-list ls-list)
   ;(printf "vs-list = ~v~n" vs-list)
-  (define n (length vs-list))
+  (define vs (list->vector vs-list))
+  (define n (vector-length vs))
   (cond
     [(<= n 3)  (values vs-list ls-list empty empty)]
     [else
-     (define vs (list->vector vs-list))
      (define ls (list->vector ls-list))
-     (define n/2 (quotient n 2))
      
-     (define opposite (λ ([i1 : Fixnum]) (modulo (+ i1 n/2) n)))
+     (define opposite (λ ([i1 : (Refine [i1 : Index] (< i1 n))])
+                        (modulo (+ i1 (quotient n 2)) n)))
      
      (define opposite-dist
-       (λ ([i1 : Fixnum])
-         (define v1 (vector-ref vs i1))
+       (λ ([i1 : (Refine [i1 : Index] (< i1 n))])
+         (define v1 (safe-vector-ref vs i1))
          (define v2 (vector-ref vs (opposite i1)))
          (define x (- (flvector-ref v2 0) (flvector-ref v1 0)))
          (define y (- (flvector-ref v2 1) (flvector-ref v1 1)))
          (define z (- (flvector-ref v2 2) (flvector-ref v1 2)))
          (+ (* x x) (* y y) (* z z))))
-     
-     (define-values (i1 _)
-       (for/fold ([best-i : Fixnum  0]
-                  [best-dist : Flonum  (opposite-dist 0)]
-                  ) ([i1 : Positive-Fixnum  (in-range 1 n)])
-         (define dist (opposite-dist i1))
-         (if (dist . < . best-dist)
-             (values i1 dist)
-             (values best-i best-dist))))
+
+     (define i1
+       (let loop : (Refine [i1 : Index] (< i1 n))
+         ([best-i : (Refine [i1 : Index] (< i1 n))  0]
+          [best-dist : Flonum  (opposite-dist 0)]
+          [i1 : Positive-Fixnum 1])
+         (cond
+           [(< i1 n)
+            (define dist (opposite-dist i1))
+            (if (dist . < . best-dist)
+                (loop i1 dist (add1 i1))
+                (loop best-i best-dist (add1 i1)))]
+           [else best-i])))
      
      (define i2 (opposite i1))
-     
-     (: extract (-> Fixnum Fixnum (Values (Listof FlVector) (Listof Boolean))))
+
+     (: extract (~> ([i1 : (Refine [i1 : Index] (< i1 n))]
+                     [i2 : (Refine [i2 : Index] (< i2 n))])
+                    (Values (Listof FlVector) (Listof Boolean))))
      (define (extract i1 i2)
-       (let loop ([i i2] [new-vs : (Listof FlVector)  empty]
-                         [new-ls : (Listof Boolean)   empty])
-         (cond [(= i i1)  (values (reverse (cons (vector-ref vs i) new-vs))
+       (let loop ([i : (Refine [i1 : Index] (< i1 n)) i2]
+                  [new-vs : (Listof FlVector)  empty]
+                  [new-ls : (Listof Boolean)   empty])
+         (cond [(= i i1)  (values (reverse (cons (safe-vector-ref vs i) new-vs))
                                   (reverse (cons (vector-ref ls i) new-ls)))]
                [else
                 (loop (modulo (+ i 1) n)
-                      (cons (vector-ref vs i) new-vs)
+                      (cons (safe-vector-ref vs i) new-vs)
                       (cons (if (= i i2) #f (vector-ref ls i)) new-ls))])))
-     
+      
      (define-values (vs1 ls1) (extract i1 i2))
      (define-values (vs2 ls2) (extract i2 i1))
      (values vs1 ls1 vs2 ls2)]))

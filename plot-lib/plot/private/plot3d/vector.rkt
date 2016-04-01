@@ -4,7 +4,8 @@
          racket/list
          (only-in math/flonum fl flvector+ flvector-)
          (only-in racket/unsafe/ops unsafe-vector-ref)
-         racket/flonum)
+         racket/flonum
+         typed/safe/ops)
 
 (provide M3 m3-apply m3-transpose m3* m3-rotate-z m3-rotate-x
          flv3-dot
@@ -134,9 +135,9 @@
 (define (exact-vector3d v)
   (define n (vector-length v))
   (cond [(= n 3)
-         (define v1 (unsafe-vector-ref v 0))
-         (define v2 (unsafe-vector-ref v 1))
-         (define v3 (unsafe-vector-ref v 2))
+         (define v1 (safe-vector-ref v 0))
+         (define v2 (safe-vector-ref v 1))
+         (define v3 (safe-vector-ref v 2))
          (cond [(and (exact? v1) (exact? v2) (exact? v3))  v]
                [(and (rational? v1) (rational? v2) (rational? v3))
                 (vector (inexact->exact v1) (inexact->exact v2) (inexact->exact v3))]

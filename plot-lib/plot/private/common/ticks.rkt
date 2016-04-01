@@ -2,7 +2,7 @@
 
 ;; Data structure that represents a tick, and functions that produce ticks.
 
-(require racket/string racket/list racket/match racket/math math/flonum
+(require racket/string racket/list racket/match racket/math math/flonum typed/safe/ops
          "type-doc.rkt"
          "types.rkt"
          "math.rkt"
@@ -540,7 +540,7 @@
         (if (positive? x-largest) (floor-log/base (expt base pow) x-largest) 0))
       (define format-str
         (cond [(and (b . >= . 0) (b . < . (vector-length suffixes)))
-               (format "~a ~a" "~a" (vector-ref suffixes b))]
+               (format "~a ~a" "~a" (safe-vector-ref suffixes b))]
               [else
                (format "~a×~a~a ~a" "~a"
                        base (integer->superscript (* b pow)) (vector-ref suffixes 0))]))
@@ -638,7 +638,7 @@
              (if (b . < . 0) (+ b 1) b))
            0))
      (define suffix
-       (cond [(and (b . >= . 0) (b . < . n))  (vector-ref suffixes b)]
+       (cond [(and (b . >= . 0) (b . < . n))  (safe-vector-ref suffixes b)]
              [else  (format "×10~a" (integer->superscript (* b 3)))]))
      (define unit
        (cond [(= 0 (string-length suffix))  1]

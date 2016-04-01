@@ -2,7 +2,7 @@
 
 ;; Extra functions that can't be easily categorized
 
-(require racket/sequence racket/list racket/match)
+(require racket/sequence racket/list racket/match typed/safe/ops)
 
 (provide (all-defined-out))
 
@@ -19,11 +19,15 @@
 
 (: sequence-head-vector (All (A) (-> Symbol (Sequenceof A) Integer (Vectorof A))))
 (define (sequence-head-vector name xs n)
-  (define vec (for/vector ([x  xs] [i  (in-range n)]) : A
-                x))
-  (unless (= n (vector-length vec))
+  (unless (<= n (sequence-length xs))
     (raise-argument-error name (format "sequence of length >= ~a" n) xs))
-  vec)
+  (define vec (make-vector n (sequence-ref xs 0)))
+  (let loop ([i : Natural 0])
+    (cond
+      [(< i n)
+       (safe-vector-set! vec i (sequence-ref xs i))
+       (loop (add1 i))]
+      [else vec])))
 
 (: sequence->listof-vector (All (A) (-> Symbol (Sequenceof (Sequenceof A)) Integer
                                         (Listof (Vectorof A)))))
@@ -53,12 +57,20 @@
                                                   (rest hash))]
                  [else  (cons (first hash) (loop (rest hash)))])])))
 
-(: vector-find-index (All (A) (->* [(-> A Any) (Vectorof A)] [Integer Integer] (U Integer #f))))
-(define (vector-find-index pred? xs [start 0] [end (vector-length xs)])
-  (let/ec return : (U Integer #f)
-    (for ([i  (in-range start end)] #:when (pred? (vector-ref xs i)))
-      (return i))
-    #f))
+(: vector-find-index (All (A) (~> ([pred? : (-> A Any)]
+                                   [xs : (Vectorof A)]
+                                   [start : Natural])
+                                  (U (Refine [i : Natural] (< i (len xs)))
+                                     #f))))
+(define (vector-find-index pred? xs [start 0])
+  (define end (vector-length xs))
+  (let loop ([i start])
+    (cond
+      [(< i end)
+       (cond
+         [(pred? (safe-vector-ref xs i)) i]
+         [else (loop (add1 i))])]
+      [else #f])))
 
 (: sorted-apply (All (A B) (-> (-> (Listof A) (Listof A))
                                (-> (Listof A) (Listof B))

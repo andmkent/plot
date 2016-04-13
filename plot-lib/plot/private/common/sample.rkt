@@ -244,65 +244,85 @@
     (match-define (2d-sample xs ys zss fz-min fz-max) sample)
     (define ya (first ys))
     (define zs0 (vector-ref zss 0))
-    (for/fold ([ya : Real  ya]
-               [zs0 : (Vectorof Real)  zs0])
-              ([yb  (in-list (rest ys))]
-               [i  (in-range 1 (vector-length zss))])
-      (define zs1 (vector-ref zss i))
-      (define xa (first xs))
-      (define z1 (vector-ref zs0 0))
-      (define z4 (vector-ref zs1 0))
-      (for/fold ([xa : Real  xa]
-                 [z1 : Real  z1]
-                 [z4 : Real  z4])
-                ([xb  (in-list (rest xs))]
-                 [j  (in-range 1 (min (vector-length zs0) (vector-length zs1)))])
-        (define z2 (vector-ref zs0 j))
-        (define z3 (vector-ref zs1 j))
-        expr ...
-        (values xb z2 z3))
-      (values yb zs1))))
+    (let loop ([ya : Real  ya]
+             [zs0 : (Vectorof Real)  zs0]
+             [my-ys (rest ys)]
+             [yb (car (cdr (rest ys)))]
+             [i : Natural 1])
+    (cond
+      [(< i (vector-length zss))
+       (define zs1 (safe-vector-ref zss i))
+       (define xa (first xs))
+       (define z1 (vector-ref zs0 0))
+       (define z4 (vector-ref zs1 0))
+       (let loop ([xa : Real  xa]
+                  [z1 : Real  z1]
+                  [z4 : Real  z4]
+                  [my-xs (rest xs)]
+                  [xb  (car (rest xs))]
+                  [j : Natural 1])
+         (cond
+           [(and (< j (vector-length zs0)) (< j (vector-length zs1)))
+            (define z2 (safe-vector-ref zs0 j))
+            (define z3 (safe-vector-ref zs1 j))
+            expr ...
+            (loop xb z2 z3 (cdr my-xs) (cadr my-xs) (add1 j))]
+           [else (values xb z1 z4)]))
+       (loop yb zs1 (cdr my-ys) (cadr my-ys) (add1 i))]
+      [else (values ya zs0)]))))
 
 (define-syntax-rule (for-3d-sample (xa xb ya yb za zb d1 d2 d3 d4 d5 d6 d7 d8) sample expr ...)
   (let ()
     (match-define (3d-sample xs ys zs dsss fd-min fd-max) sample)
     (define za (first zs))
     (define dss0 (vector-ref dsss 0))
-    (for/fold ([za : Real  za]
-               [dss0 : (Vectorof (Vectorof Real))  dss0])
-              ([zb  (in-list (rest zs))]
-               [i  (in-range 1 (vector-length dsss))])
-      (define dss1 (vector-ref dsss i))
-      (define ya (first ys))
-      (define ds00 (vector-ref dss0 0))
-      (define ds10 (vector-ref dss1 0))
-      (for/fold ([ya : Real  ya]
-                 [ds00 : (Vectorof Real)  ds00]
-                 [ds10 : (Vectorof Real)  ds10])
-                ([yb  (in-list (rest ys))]
-                 [j  (in-range 1 (min (vector-length dss0) (vector-length dss1)))])
-        (define ds01 (vector-ref dss0 j))
-        (define ds11 (vector-ref dss1 j))
-        (define xa (first xs))
-        (define d1 (vector-ref ds00 0))
-        (define d4 (vector-ref ds01 0))
-        (define d5 (vector-ref ds10 0))
-        (define d8 (vector-ref ds11 0))
-        (for/fold ([xa : Real  xa]
-                   [d1 : Real  d1]
-                   [d4 : Real  d4]
-                   [d5 : Real  d5]
-                   [d8 : Real  d8])
-                  ([xb  (in-list (rest xs))]
-                   [k  (in-range 1 (min (vector-length ds00)
-                                        (vector-length ds01)
-                                        (vector-length ds10)
-                                        (vector-length ds11)))])
-          (define d2 (vector-ref ds00 k))
-          (define d3 (vector-ref ds01 k))
-          (define d6 (vector-ref ds10 k))
-          (define d7 (vector-ref ds11 k))
-          expr ...
-          (values xb d2 d3 d6 d7))
-        (values yb ds01 ds11))
-      (values zb dss1))))
+    (let loop ([za : Real  za]
+               [dss0 : (Vectorof (Vectorof Real))  dss0]
+               [my-zs (rest zs)]
+               [zb (car (rest zs))]
+               [i : Natural 1])
+      (cond
+        [(< i (vector-length dsss))
+         (define dss1 (safe-vector-ref dsss i))
+         (define ya (first ys))
+         (define ds00 (vector-ref dss0 0))
+         (define ds10 (vector-ref dss1 0))
+         (let loop ([ya : Real  ya]
+                    [ds00 : (Vectorof Real)  ds00]
+                    [ds10 : (Vectorof Real)  ds10]
+                    [my-ys (rest ys)]
+                    [yb  (car (rest ys))]
+                    [j : Natural 1])
+           (cond
+             [(and (< j (vector-length dss0)) (< j (vector-length dss1)))
+              (define ds01 (safe-vector-ref dss0 j))
+              (define ds11 (safe-vector-ref dss1 j))
+              (define xa (first xs))
+              (define d1 (vector-ref ds00 0))
+              (define d4 (vector-ref ds01 0))
+              (define d5 (vector-ref ds10 0))
+              (define d8 (vector-ref ds11 0))
+              (let loop ([xa : Real  xa]
+                         [d1 : Real  d1]
+                         [d4 : Real  d4]
+                         [d5 : Real  d5]
+                         [d8 : Real  d8]
+                         [my-xs (rest xs)]
+                         [xb (car (rest xs))]
+                         [k : Natural 1])
+                        (cond
+                          [(and (< k (vector-length ds00))
+                                (< k (vector-length ds01))
+                                (< k (vector-length ds10))
+                                (< k (vector-length ds11)))
+                           (define d2 (vector-ref ds00 k))
+                           (define d3 (vector-ref ds01 k))
+                           (define d6 (vector-ref ds10 k))
+                           (define d7 (vector-ref ds11 k))
+                           expr ...
+                           (loop xb d2 d3 d6 d7 (cdr my-xs) (cadr my-xs) (add1 k))]
+                          [else (values xa d1 d4 d5 d8)]))
+              (loop yb ds01 ds11 (cdr my-ys) (cadr my-ys) (add1 j))]
+             [else (values ya ds00 ds10)]))
+         (loop zb dss1 (cdr my-zs) (cadr my-zs) (add1 i))]
+        [else (values za dss0)]))))

@@ -1,7 +1,7 @@
 #lang typed/racket/base
 
 (require (for-syntax racket/base)
-         racket/match
+         racket/match typed/safe/ops
          racket/list)
 
 (provide point-in-bounds?
@@ -135,17 +135,20 @@
                     [z1 : Real  z1]
                     [v1? : Boolean  v1?])
                    ([v2  (in-list (rest vs))])
-           (define x2 (vector-ref v2 0))
-           (define y2 (vector-ref v2 1))
-           (define z2 (vector-ref v2 2))
-           (define v2? (gte? (plane-point-dist a b c d x2 y2 z2) 0))
-           (cond [(and v1? v2?)       (values (cons (cons v2 (first vss)) (rest vss)) x2 y2 z2 v2?)]
-                 [(not (or v1? v2?))  (values vss x2 y2 z2 v2?)]
-                 [else
-                  (define-values (x y z) (plane-line-intersect a b c d x1 y1 z1 x2 y2 z2))
-                  (if v1?
-                      (values (cons (cons (vector x y z) (first vss)) (rest vss)) x2 y2 z2 v2?)
-                      (values (cons (list v2 (vector x y z)) vss) x2 y2 z2 v2?))])))
+           (cond
+             [(= 3 (vector-length v2))
+              (define x2 (safe-vector-ref v2 0))
+              (define y2 (safe-vector-ref v2 1))
+              (define z2 (safe-vector-ref v2 2))
+              (define v2? (gte? (plane-point-dist a b c d x2 y2 z2) 0))
+              (cond [(and v1? v2?)       (values (cons (cons v2 (first vss)) (rest vss)) x2 y2 z2 v2?)]
+                    [(not (or v1? v2?))  (values vss x2 y2 z2 v2?)]
+                    [else
+                     (define-values (x y z) (plane-line-intersect a b c d x1 y1 z1 x2 y2 z2))
+                     (if v1?
+                         (values (cons (cons (vector x y z) (first vss)) (rest vss)) x2 y2 z2 v2?)
+                         (values (cons (list v2 (vector x y z)) vss) x2 y2 z2 v2?))])]
+             [else (error 'bad-input-vectors)])))
        
        (filter (compose not empty?) vss)])))
 
@@ -223,33 +226,39 @@
 (define-syntax-rule (make-clip-polygon/plane a b c d gte?)
   (plambda: (L) ([vs : (Listof (Vectorof Real))] [ls : (Listof L)])
     (define v1 (last vs))
-    (define x1 (vector-ref v1 0))
-    (define y1 (vector-ref v1 1))
-    (define z1 (vector-ref v1 2))
-    (define v1? (gte? (plane-point-dist a b c d x1 y1 z1) 0))
-    
-    (define-values (new-vs new-ls _x1 _y1 _z1 _v1?)
-      (for/fold ([vs : (Listof (Vectorof Real))  empty]
-                 [ls : (Listof (U #t L))  empty]
-                 [x1 : Real  x1]
-                 [y1 : Real  y1]
-                 [z1 : Real  z1]
-                 [v1? : Boolean  v1?])
-                ([v2  (in-list vs)]
-                 [l   (in-list ls)])
-        (define x2 (vector-ref v2 0))
-        (define y2 (vector-ref v2 1))
-        (define z2 (vector-ref v2 2))
-        (define v2? (gte? (plane-point-dist a b c d x2 y2 z2) 0))
-        (cond [(and v1? v2?)       (values (cons v2 vs) (cons l ls) x2 y2 z2 v2?)]
-              [(not (or v1? v2?))  (values vs ls x2 y2 z2 v2?)]
-              [else
-               (define-values (x y z) (plane-line-intersect a b c d x1 y1 z1 x2 y2 z2))
-               (if v1?
-                   (values (cons (vector x y z) vs) (cons l ls) x2 y2 z2 v2?)
-                   (values (list* v2 (vector x y z) vs) (list* l #t ls) x2 y2 z2 v2?))])))
-    
-    (values (reverse new-vs) (reverse new-ls))))
+    (cond
+      [(= 3 (vector-length v1))
+       (define x1 (safe-vector-ref v1 0))
+       (define y1 (safe-vector-ref v1 1))
+       (define z1 (safe-vector-ref v1 2))
+       (define v1? (gte? (plane-point-dist a b c d x1 y1 z1) 0))
+       
+       (define-values (new-vs new-ls _x1 _y1 _z1 _v1?)
+         (for/fold ([vs : (Listof (Vectorof Real))  empty]
+                    [ls : (Listof (U #t L))  empty]
+                    [x1 : Real  x1]
+                    [y1 : Real  y1]
+                    [z1 : Real  z1]
+                    [v1? : Boolean  v1?])
+                   ([v2  (in-list vs)]
+                    [l   (in-list ls)])
+           (cond
+             [(= 3 (vector-length v2))
+              (define x2 (safe-vector-ref v2 0))
+              (define y2 (safe-vector-ref v2 1))
+              (define z2 (safe-vector-ref v2 2))
+              (define v2? (gte? (plane-point-dist a b c d x2 y2 z2) 0))
+              (cond [(and v1? v2?)       (values (cons v2 vs) (cons l ls) x2 y2 z2 v2?)]
+                    [(not (or v1? v2?))  (values vs ls x2 y2 z2 v2?)]
+                    [else
+                     (define-values (x y z) (plane-line-intersect a b c d x1 y1 z1 x2 y2 z2))
+                     (if v1?
+                         (values (cons (vector x y z) vs) (cons l ls) x2 y2 z2 v2?)
+                         (values (list* v2 (vector x y z) vs) (list* l #t ls) x2 y2 z2 v2?))])]
+             [else (error '3d-vector)])))
+       
+       (values (reverse new-vs) (reverse new-ls))]
+      [else (error '3d-vector-required)])))
 
 (: clip-polygon/plane (All (L) (-> (Listof (Vectorof Real)) (Listof L) (Vector Real Real Real Real)
                                    (Values (Listof (Vectorof Real)) (Listof (U #t L))))))

@@ -223,9 +223,27 @@
                  (define zs (sample-points outer-z-ivl inner-z-ivl z-num tz))
                  (define: d-min : (U Real #f) #f)
                  (define: d-max : (U Real #f) #f)
+                 (define xlen (length xs))
+                 (define vec-xs : (Refine [vec-xs : (Vectorof Real)] (= (len vec-xs) xlen))
+                     (make-vector xlen))
                  (define dsss
                    (for/vector #:length (length zs) ([z  (in-list zs)]) : (Vectorof (Vectorof Real))
                      (for/vector #:length (length ys) ([y  (in-list ys)]) : (Vectorof Real)
+                       (let loop ([my-xs xs]
+                                [j : Natural 0])
+                       (cond
+                         [(< j xlen)
+                          (define d (f (car my-xs) y z))
+                          (cond [(rational? z)
+                                 (let ([d-min-val  d-min])
+                                   (unless (and d-min-val (d . >= . d-min-val)) (set! d-min d)))
+                                 (let ([d-max-val  d-max])
+                                   (unless (and d-max-val (d . <= . d-max-val)) (set! d-max d)))
+                                 (safe-vector-set! vec-xs j (inexact->exact d))
+                                 (loop (cdr my-xs) (add1 j))]
+                                [else (safe-vector-set! vec-xs j d)
+                                      (loop (cdr my-xs) (add1 j))])]
+                         [else vec-xs]))#;
                        (for/vector #:length (length xs) ([x  (in-list xs)]) : Real
                          (define d (f x y z))
                          (cond [(rational? d)

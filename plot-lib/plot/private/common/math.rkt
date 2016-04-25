@@ -1,6 +1,6 @@
 #lang typed/racket/base
 
-(require racket/match racket/list racket/vector math/base math/flonum
+(require racket/match racket/list racket/vector math/base math/flonum typed/safe/ops
          "type-doc.rkt")
 
 (provide (all-defined-out))
@@ -204,8 +204,13 @@
 (define-syntax-rule (vmap name f v)
   (let ()
     (define n (vector-length v))
-    (for/vector #:length n ([x  (in-vector v)]) : Real
-      (f x))))
+    (define vs : (Refine [vs : (Vectorof Real)] (= n (len vs))) (make-vector n))
+    (let loop ([i : Natural 0])
+      (cond
+        [(< i n)
+         (safe-vector-set! vs i (f (safe-vector-ref v i)))
+         (loop (add1 i))]
+        [else vs]))))
 
 (define-syntax-rule (unrolled-vmap name f v)
   (let ()
